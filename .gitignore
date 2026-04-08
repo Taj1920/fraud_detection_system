@@ -205,7 +205,10 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+<<<<<<< HEAD
 
 
 #large files
 data/*.csv
+=======
+>>>>>>> 29fd91cad60b502f358e8e798ab00788dc399339
