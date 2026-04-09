@@ -8,3 +8,4 @@ xgboost
 tensorflow
 fastapi
 uvicorn
+kafka-python

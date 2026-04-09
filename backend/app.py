@@ -3,9 +3,9 @@ import os
 import joblib
 import pandas as pd
 from fastapi import FastAPI
-from pydantic import BaseModel
 from backend.schemas import PredictFraudRequest,PredictFraudResponse
 from fastapi.concurrency import run_in_threadpool
+from backend.logger import logging
 
 #app creation
 app = FastAPI()
@@ -22,8 +22,6 @@ pipe = joblib.load(model_path)
 def home():
     return {"message":"This is a home page"}
 
-# 'hour', 'day', 'category', 'amt', 'gender', 'state', 'distance',
-#        'city_pop', 'age'
 
 
 #fraud prediction api
@@ -40,11 +38,14 @@ async def predict_fraud(pred_req : PredictFraudRequest):
         'city_pop':pred_req.city_pop,
         'age':pred_req.age
     }, index = [0])
-
+    logging.info("predict fraud api requested")
+    logging.info(f"transaction: {trans_data}")
     prediction = await run_in_threadpool(pipe.predict, trans_data)
+    logging.info("model performing prediction")
     response = {
         "prediction":prediction[0], 
         "label": "Fraud" if prediction[0]==1 else "Not Fraud"
     }
+    logging.info(f'prediction: {response}')
     return response
 
