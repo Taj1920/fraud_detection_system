@@ -41,9 +41,9 @@ def model_prediction(inp_data):
         #rules engine
         prediction = apply_rules(df,prediction,prob)
 
-        logger.info(f"predicted: {prediction}, fraud_probablity: {prob}")
+        logger.info(f"predicted: {prediction}, fraud_probability: {prob}")
 
-        return {"prediction":prediction,"fraud_probablity":prob}
+        return {"prediction":prediction,"fraud_probability":float(prob)}
     except Exception as e:
         logger.error(f"Error during prediction {str(e)}")
         raise 
