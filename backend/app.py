@@ -5,7 +5,7 @@ import pandas as pd
 from fastapi import FastAPI
 from backend.schemas import PredictFraudRequest,PredictFraudResponse
 from fastapi.concurrency import run_in_threadpool
-from backend.logger import logging
+from utils.logger import logging
 
 #app creation
 app = FastAPI()

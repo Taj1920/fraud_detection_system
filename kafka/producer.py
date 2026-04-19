@@ -2,7 +2,7 @@ import os
 import json
 import time
 import pandas as pd
-from backend.logger import logging
+from utils.logger import logging
 from kafka import KafkaProducer
 from config import KAFKA_BROKER,TOPIC_NAME
 
