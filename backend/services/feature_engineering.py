@@ -31,3 +31,15 @@ def extract_features(df):
     
     df = df.loc[:,selected_cols]
     return df
+
+
+if __name__=="__main__":
+    from pathlib import Path
+    ROOT_DIR = Path(__file__).resolve().parents[2]
+    test_path = ROOT_DIR / "data" / "fraudTest.csv"
+    df = pd.read_csv(test_path)
+    sam = df.sample()
+    print("sam: ",sam)
+    df = engineer_features(sam)
+    df = extract_features(df)
+    print("cleaned: ",df)
