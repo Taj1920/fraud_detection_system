@@ -1,12 +1,12 @@
 import joblib
 import pandas as pd
 from pathlib import Path
-from backend.services.feature_engineering import engineer_features,extract_features
-from backend.services.rules_engine import apply_rules
+from backend.app.services.feature_engineering import engineer_features,extract_features
+from backend.app.services.rules_engine import apply_rules
 from utils.logger import setup_logger
 
 #model path
-ROOT_DIR = Path(__file__).resolve().parents[2]
+ROOT_DIR = Path(__file__).resolve().parents[3]
 MODEL_PATH = ROOT_DIR / "models" / "artifacts" / "best_model" / "model.pkl"
 
 #logger
@@ -26,11 +26,11 @@ def model_prediction(inp_data):
         logger.info("preprocessing...")
         #convert to dataframe
         df = pd.DataFrame(inp_data if isinstance(inp_data,list) else [inp_data])
+        trans_num = df["trans_num"][0]
         #feature engineering
         df = engineer_features(df)
         #extract features
         df = extract_features(df)
-
         #predict fraud
         logger.info("model predicting...")
         prediction = model.predict(df)[0]
@@ -41,9 +41,9 @@ def model_prediction(inp_data):
         #rules engine
         prediction = apply_rules(df,prediction,prob)
 
-        logger.info(f"predicted: {prediction}, fraud_probability: {prob}")
+        logger.info(f"trans_num: {trans_num} predicted: {prediction}, fraud_probability: {prob}")
 
-        return {"prediction":prediction,"fraud_probability":float(prob)}
+        return {"trans_num":trans_num,"prediction":prediction,"fraud_probability":float(prob)}
     except Exception as e:
         logger.error(f"Error during prediction {str(e)}")
         raise 

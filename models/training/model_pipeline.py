@@ -1,12 +1,8 @@
 import joblib
-import os
 from pathlib import Path
 import pandas as pd
 
-# import sys
-# sys.path.append(os.path.abspath(r".."))
-from backend.services.feature_engineering import engineer_features,extract_features
-
+from backend.app.services.feature_engineering import engineer_features,extract_features
 from models.training.train import Trainer
 from models.training.evaluate import model_evaluate
 from utils.logger import setup_logger

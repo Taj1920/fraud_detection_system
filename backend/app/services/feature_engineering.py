@@ -35,7 +35,7 @@ def extract_features(df):
 
 if __name__=="__main__":
     from pathlib import Path
-    ROOT_DIR = Path(__file__).resolve().parents[2]
+    ROOT_DIR = Path(__file__).resolve().parents[3]
     test_path = ROOT_DIR / "data" / "fraudTest.csv"
     df = pd.read_csv(test_path,index_col=0)
     sam = df.sample()

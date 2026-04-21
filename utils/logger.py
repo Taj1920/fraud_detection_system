@@ -10,10 +10,10 @@ def setup_logger(logger_name: str, log_file: str):
     logger = logging.getLogger(logger_name)
     logger.setLevel(logging.INFO)
 
-    # Prevent duplicate logs
-    if logger.handlers:
-        return logger
-
+       # 🔥 Clear old handlers (IMPORTANT FIX)
+    if logger.hasHandlers():
+        logger.handlers.clear()
+        
     # Create logs directory if not exists
     os.makedirs(os.path.dirname(log_file), exist_ok=True)
 
