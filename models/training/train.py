@@ -12,8 +12,14 @@ logger = setup_logger("model_pipeline", log_path)
 
 def model_trainer(model_tuple):
     name,model,X_train,y_train = model_tuple
-    model.fit(X_train,y_train)
-    return name,model
+    try:
+        model.fit(X_train,y_train,model__verbose=True)
+        return name,model
+    except TypeError:
+        model.fit(X_train,y_train)
+        return name,model
+
+
 
 #multi-model training
 class Trainer:

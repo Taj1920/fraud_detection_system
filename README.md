@@ -1,5 +1,6 @@
 # fraud_detection_system
 ## Folder Structure
+
 ```
 fraud-detection-system/
 │
@@ -98,3 +99,6 @@ fraud-detection-system/
 ├── requirements.txt
 └── README.md
 ```
+
+### Pipeline flow
+![alt text](<ChatGPT Image Apr 22, 2026, 11_34_18 AM.png>)

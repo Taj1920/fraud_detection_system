@@ -1,4 +1,5 @@
 import joblib
+import json
 from pathlib import Path
 import pandas as pd
 
@@ -14,6 +15,8 @@ from sklearn.preprocessing import StandardScaler,OneHotEncoder
 from imblearn.pipeline import Pipeline
 from sklearn.compose import ColumnTransformer
 
+import mlflow
+import mlflow.sklearn
 
 #Root dir
 ROOT_DIR = Path(__file__).resolve().parents[2]
@@ -42,6 +45,8 @@ def load_dataset(file_path):
 
 
 def pipeline():
+    mlflow.set_experiment("fraud_detection")
+
     logger.info("model pipeline initiated")
 
     #1. load datasets
@@ -71,7 +76,7 @@ def pipeline():
     logger.info("preprocessing data...")
     #Divide numerical and categorical columns
     numeric_cols = X_train.select_dtypes(include="number").columns
-    cat_cols = X_train.select_dtypes(include="str").columns
+    cat_cols = X_train.select_dtypes(include="object").columns
 
     preprocessor = ColumnTransformer([
             ("scaler",StandardScaler(),numeric_cols),
@@ -90,28 +95,83 @@ def pipeline():
     rf = Pipeline([
         ("preprocessor",preprocessor),
         ("smote",SMOTE()),
-        ("model",RandomForestClassifier(n_estimators=100,max_depth=5,random_state=42))
+        ("model",RandomForestClassifier(n_estimators=100,max_depth=5,random_state=42,verbose=1))
     ])
 
     models = {"xgb":xgb,"RF":rf}
 
     #7. model training
+    logger.info("Models Training paralelly...")
     trainer = Trainer(models,X_train,y_train)
     trained_models = trainer.train_models_parallel()
+    logger.info("Models Training finished...")
 
     #8. model evaluation
     metrics_result = {}
     for name,model in trained_models.items():
-        metrics_result[name] = model_evaluate(model,X_train,X_test,y_train,y_test,model_name=name)
-        #model serialization
-        logger.info(f"saving {name} in artifacts/models...")
-        joblib.dump(model,f"{MODELS_ARTIFACTS}/{name}.pkl")
+        with mlflow.start_run(run_name=name):
+            logger.info(f"logging {name} to mlflow...")
+
+            #Evaluate model
+            metrics = model_evaluate(model,X_train,X_test,y_train,y_test,model_name=name)
+            metrics_result[name] = metrics
+
+            #log metrics to mlflow
+            for metric_name,value in metrics.items():
+                #log numeric
+                if isinstance(value,(int,float)):
+                    mlflow.log_metric(metric_name,value)
+                #log string
+                elif isinstance(value,str):
+                    mlflow.log_param(metric_name,value)
+                #log large objects as artifacts
+                else:
+                    with open("temp.json","w") as file:
+                        json.dump(value,file)
+                    mlflow.log_artifact("temp.json")
+
+
+
+            #log params
+            if name=="xgb":
+                mlflow.log_param("model","XGBoost")
+            else:
+                mlflow.log_param("model","RandomForest")
+
+            #log model to mlflow
+            mlflow.sklearn.log_model(model,name)
+
+            #model serialization
+            logger.info(f"saving {name} in artifacts/models...")
+            joblib.dump(model,f"{MODELS_ARTIFACTS}/{name}.pkl")
 
 
     #9. Serialize best model
     logger.info(f"Finding best model...")
     best_model_name = max(metrics_result,key = lambda x: metrics_result[x]['f1'])
     best_model = trained_models[best_model_name]
+
+    #log best model to mlflow
+    logger.info(f"logging best model {best_model_name} and params to mlflow")
+    with mlflow.start_run(run_name=best_model_name):
+        mlflow.log_param("best_model",best_model_name)
+
+        for metric_name,value in metrics_result[best_model_name].items():
+                #log numeric
+                if isinstance(value,(int,float)):
+                    mlflow.log_metric(metric_name,value)
+                #log string
+                elif isinstance(value,str):
+                    mlflow.log_param(metric_name,value)
+                #log large objects as artifacts
+                else:
+                    with open("temp.json","w") as file:
+                        json.dump(value,file)
+                    mlflow.log_artifact("temp.json")
+
+        
+        mlflow.sklearn.log_model(best_model,best_model_name)
+
     logger.info(f"Best model {best_model_name}.. saving in artifacts/best_model...")
     joblib.dump(best_model,f"{BEST_MODEL_DIR}/model.pkl")
 

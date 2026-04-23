@@ -23,7 +23,7 @@ def model_evaluate(model,X_train,X_test,y_train,y_test,model_name="model"):
     f1 = f1_score(y_test,y_pred)
     logger.info("Evaluation finished...")
     metrics = {"model_name":model_name,
-            "confuison_matrix":cm.tolist(),
+            "confusion_matrix":cm.tolist(),
             "train_data_score":train_score,
             "test_data_score":test_score,
             "accuracy":accuracy,
