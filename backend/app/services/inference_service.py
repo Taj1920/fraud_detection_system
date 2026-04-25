@@ -1,24 +1,24 @@
-import joblib
+import mlflow
+import numpy as np
 import pandas as pd
 from pathlib import Path
 from backend.app.services.feature_engineering import engineer_features,extract_features
 from backend.app.services.rules_engine import apply_rules
 from utils.logger import setup_logger
 
-#model path
-ROOT_DIR = Path(__file__).resolve().parents[3]
-MODEL_PATH = ROOT_DIR / "models" / "artifacts" / "best_model" / "model.pkl"
 
 #logger
+ROOT_DIR = Path(__file__).resolve().parents[3]
 LOG_FILE = ROOT_DIR / "logs" / "prediction.log"
 logger = setup_logger("prediction",LOG_FILE)
 
-def load_best_model(model_path):
-    model = joblib.load(model_path)
+def load_best_model():
+    mlflow.set_tracking_uri("http://mlflow:5000")
+    model = mlflow.pyfunc.load_model("models:/fraud_detection_model/Production")
     return model
 
 #load best model
-model = load_best_model(MODEL_PATH)
+model = load_best_model()
 
 def model_prediction(inp_data):
     try:
@@ -33,13 +33,12 @@ def model_prediction(inp_data):
         df = extract_features(df)
         #predict fraud
         logger.info("model predicting...")
-        prediction = model.predict(df)[0]
-
-        #predict probability
-        prob = model.predict_proba(df)[0][1]
+        probs = model.predict(df)
+        prob = probs[0][1]
+        pred_class = np.argmax(probs,axis=1)[0]
 
         #rules engine
-        prediction = apply_rules(df,prediction,prob)
+        prediction = apply_rules(df,pred_class,prob)
 
         logger.info(f"trans_num: {trans_num} predicted: {prediction}, fraud_probability: {prob}")
 

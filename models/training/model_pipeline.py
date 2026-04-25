@@ -17,6 +17,7 @@ from sklearn.compose import ColumnTransformer
 
 import mlflow
 import mlflow.sklearn
+from mlflow.tracking import MlflowClient
 
 #Root dir
 ROOT_DIR = Path(__file__).resolve().parents[2]
@@ -37,7 +38,9 @@ BEST_MODEL_DIR = ARTIFACTS_DIR / "best_model"
 MODELS_ARTIFACTS.mkdir(parents=True, exist_ok=True)
 BEST_MODEL_DIR.mkdir(parents=True, exist_ok=True)
 
-
+#mlflow config
+mlflow.set_tracking_uri("http://localhost:5000")
+mlflow.set_experiment("fraud_detection")
 
 def load_dataset(file_path):
     df = pd.read_csv(file_path,index_col=0)
@@ -45,8 +48,6 @@ def load_dataset(file_path):
 
 
 def pipeline():
-    mlflow.set_experiment("fraud_detection")
-
     logger.info("model pipeline initiated")
 
     #1. load datasets
@@ -108,8 +109,11 @@ def pipeline():
 
     #8. model evaluation
     metrics_result = {}
+    run_ids = {}
     for name,model in trained_models.items():
-        with mlflow.start_run(run_name=name):
+        with mlflow.start_run(run_name=name) as run:
+            run_id = run.info.run_id
+            run_ids[name]=run_id
             logger.info(f"logging {name} to mlflow...")
 
             #Evaluate model
@@ -139,7 +143,7 @@ def pipeline():
                 mlflow.log_param("model","RandomForest")
 
             #log model to mlflow
-            mlflow.sklearn.log_model(model,name)
+            mlflow.sklearn.log_model(model,"model",pyfunc_predict_fn="predict_proba")
 
             #model serialization
             logger.info(f"saving {name} in artifacts/models...")
@@ -150,27 +154,39 @@ def pipeline():
     logger.info(f"Finding best model...")
     best_model_name = max(metrics_result,key = lambda x: metrics_result[x]['f1'])
     best_model = trained_models[best_model_name]
+    best_run_id = run_ids[best_model_name]
 
     #log best model to mlflow
+    client = MlflowClient()
     logger.info(f"logging best model {best_model_name} and params to mlflow")
-    with mlflow.start_run(run_name=best_model_name):
-        mlflow.log_param("best_model",best_model_name)
+    client.log_param(best_run_id,"best_model",best_model_name)
+    for metric_name,value in metrics_result[best_model_name].items():
+            #log numeric
+            if isinstance(value,(int,float)):
+                client.log_metric(best_run_id,f"best_{metric_name}",value)
+            #log string
+            elif isinstance(value,str):
+                client.log_param(best_run_id,f"best_{metric_name}",value)
+            #log large objects as artifacts
+            else:
+                with open("temp.json","w") as file:
+                    json.dump(value,file)
+                client.log_artifact(best_run_id,"temp.json")
 
-        for metric_name,value in metrics_result[best_model_name].items():
-                #log numeric
-                if isinstance(value,(int,float)):
-                    mlflow.log_metric(metric_name,value)
-                #log string
-                elif isinstance(value,str):
-                    mlflow.log_param(metric_name,value)
-                #log large objects as artifacts
-                else:
-                    with open("temp.json","w") as file:
-                        json.dump(value,file)
-                    mlflow.log_artifact("temp.json")
+    #register best model in mlflow
+    model_uri = f"runs:/{best_run_id}/model"
+    registered_model = mlflow.register_model(model_uri=model_uri,
+                            name="fraud_detection_model")
+    version = registered_model.version
+    #promote to production
+    client.transition_model_version_stage(
+    name="fraud_detection_model",
+    version=version,
+    stage="Production"
+    )
 
-        
-        mlflow.sklearn.log_model(best_model,best_model_name)
+    logger.info(f"Model v{version} moved to Production")
+
 
     logger.info(f"Best model {best_model_name}.. saving in artifacts/best_model...")
     joblib.dump(best_model,f"{BEST_MODEL_DIR}/model.pkl")

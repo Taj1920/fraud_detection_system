@@ -7,6 +7,8 @@ services:
     environment:
       MYSQL_ROOT_PASSWORD: root
       MYSQL_DATABASE: fraud_db
+    env_file:
+      - .env
     ports:
       - "3306:3306"
     volumes:
@@ -14,18 +16,25 @@ services:
 
   # Kafka (KRaft mode - no Zookeeper)
   kafka:
-    image: apache/kafka:3.7.0
+    image: confluentinc/cp-kafka:7.5.0
     container_name: kafka
     ports:
       - "9092:9092"
+    env_file:
+      - .env
     environment:
-      - KAFKA_CFG_NODE_ID=1
-      - KAFKA_CFG_PROCESS_ROLES=broker,controller
-      - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=1@kafka:9093
-      - KAFKA_CFG_LISTENERS=PLAINTEXT://:9092,CONTROLLER://:9093
-      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://kafka:9092
-      - KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER
-      - ALLOW_PLAINTEXT_LISTENER=yes
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_NODE_ID: 1
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+
+      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
 
   # FastAPI
   fastapi:
@@ -34,9 +43,13 @@ services:
     command: uvicorn backend.app.main:app --host 0.0.0.0 --port 8000
     ports:
       - "8000:8000"
+    env_file:
+      - .env
     depends_on:
       - kafka
       - mysql-db
+    volumes:
+      - ./mlruns:/mlruns
 
   # Prediction Consumer
   consumer:
@@ -45,15 +58,36 @@ services:
     command: python -m backend.app.kafka.consumer
     depends_on:
       - kafka
+    env_file:
+      - .env
+    volumes:
+      - ./mlruns:/mlruns
 
   # DB Consumer
   db-consumer:
     build: .
     container_name: db-consumer
     command: python -m backend.app.kafka.db_consumer
+    env_file:
+      - .env
     depends_on:
       - kafka
       - mysql-db
+    volumes:
+      - ./mlruns:/mlruns
+  mlflow:
+    image: ghcr.io/mlflow/mlflow:latest
+    container_name: mlflow
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./mlruns:/mlruns
+      - ./mlflow.db:/mlflow.db
+    command: >
+      mlflow server
+      --backend-store-uri sqlite:///mlflow.db
+      --default-artifact-root /mlruns
+      --host 0.0.0.0
 
 volumes:
   mysql_data:

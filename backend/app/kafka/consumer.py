@@ -1,10 +1,9 @@
 import json
 import requests
 from kafka import KafkaConsumer,KafkaProducer
-from backend.app.kafka.config import KAFKA_BROKER,TOPIC_NAME,OUTPUT_TOPIC,GROUP_ID
+from backend.app.kafka.config import KAFKA_BOOTSTRAP_SERVERS,TOPIC_NAME,OUTPUT_TOPIC,GROUP_ID
 from utils.logger import setup_logger
 from pathlib import Path
-from backend.app.services.inference_service import model_prediction
 
 #logger
 ROOT_DIR = Path(__file__).resolve().parents[3]
@@ -14,7 +13,7 @@ logger = setup_logger("kafka",ROOT_DIR / "logs" / "kafka.log")
 #kafka consumer
 consumer = KafkaConsumer(
     TOPIC_NAME,
-    bootstrap_servers = KAFKA_BROKER,
+    bootstrap_servers = KAFKA_BOOTSTRAP_SERVERS,
     group_id = GROUP_ID,
     value_deserializer = lambda x: json.loads(x.decode("utf-8")),
     enable_auto_commit = False
@@ -22,7 +21,7 @@ consumer = KafkaConsumer(
 
 #kafka prediciton result producer
 producer = KafkaProducer(
-    bootstrap_servers = KAFKA_BROKER,
+    bootstrap_servers = KAFKA_BOOTSTRAP_SERVERS,
     value_serializer = lambda v:json.dumps(v).encode("utf-8")
 )
 

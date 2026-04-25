@@ -1,4 +1,4 @@
-def apply_rules(df, prediction, probability):
+def apply_rules(df, pred_class, probability):
 
     # Rule-based overrides
     if df["amt"].iloc[0] > 100000:
@@ -7,4 +7,4 @@ def apply_rules(df, prediction, probability):
     if probability > 0.85:
         return "Fraud (Rule: High Risk Score)"
 
-    return "Fraud" if prediction==1 else "Not Fraud"
+    return "Fraud" if pred_class==1 else "Not Fraud"

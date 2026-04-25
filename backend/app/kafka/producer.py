@@ -3,7 +3,7 @@ import time
 import pandas as pd
 from utils.logger import setup_logger
 from kafka import KafkaProducer
-from backend.app.kafka.config import KAFKA_BROKER,TOPIC_NAME
+from backend.app.kafka.config import KAFKA_BOOTSTRAP_SERVERS,TOPIC_NAME
 from pathlib import Path
 
 #logger
@@ -13,7 +13,7 @@ logger = setup_logger("kafka",ROOT_DIR / "logs" / "kafka.log")
 
 #kafka producer
 producer = KafkaProducer(
-    bootstrap_servers=KAFKA_BROKER,
+    bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS,
     value_serializer = lambda v: json.dumps(v).encode("utf-8")
 )
 
